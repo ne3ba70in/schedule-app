@@ -1,5 +1,18 @@
-# Vue 3 + Vite
+# Schedule App (Backend)
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Тестовое задание на позицию Fullstack-разработчик.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## Стек
+- Laravel 11/13 (PHP 8.3)
+- MySQL
+
+## Демо
+Работающее приложение (Vue + Laravel): http://workt0prog.alwaysdata.net
+
+## Запуск локально
+1. `composer install`
+2. `cp .env.example .env`
+3. Настройте базу данных в `.env`
+4. `php artisan key:generate`
+5. `php artisan migrate --seed`
+6. `php artisan serve`
