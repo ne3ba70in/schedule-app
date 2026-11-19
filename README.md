@@ -1,6 +1,5 @@
 # Schedule App (Backend)
 
-Тестовое задание на позицию Fullstack-разработчик.
 
 ## Стек
 - Laravel 11/13 (PHP 8.3)
