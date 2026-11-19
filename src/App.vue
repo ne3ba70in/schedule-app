@@ -33,7 +33,6 @@ const selectedCells = ref([])
 const draggedTemplate = ref(null)
 const customStart = ref('09:00')
 const customEnd = ref('17:00')
-
 const activePopup = ref(null)
 
 onMounted(async () => {
@@ -41,7 +40,7 @@ onMounted(async () => {
     const response = await fetch('/api/schedule')
     const data = await response.json()
     employees.value = data.employees
-    shifts.value = data.shifts
+    shifts.value = Array.isArray(data.shifts) ? {} : data.shifts
   } catch (error) {
     console.error('Ошибка загрузки:', error)
   }
@@ -75,35 +74,29 @@ const publishSchedule = async () => {
   }
 }
 
-// --- ИСПРАВЛЕННАЯ ЛОГИКА КЛИКОВ ---
 const handleCellClick = (empId, day, event) => {
   const key = `${empId}-${day}`
 
-  // 1. Если зажат Ctrl — закрываем меню и управляем выделением
   if (event.ctrlKey || event.metaKey) {
-    activePopup.value = null // <--- Закрываем меню при мультивыделении
+    activePopup.value = null
     const index = selectedCells.value.findIndex(c => c.key === key)
     if (index === -1) selectedCells.value.push({ empId, day, key })
     else selectedCells.value.splice(index, 1)
     return
   }
 
-  // 2. Если кликнули по уже выделенной ячейке (без Ctrl) — просто снимаем выделение
   if (isCellSelected(empId, day)) {
     activePopup.value = null
     selectedCells.value = selectedCells.value.filter(c => c.key !== key)
     return
   }
 
-  // 3. Обычный клик по пустой ячейке. Сбрасываем старое выделение, если оно было.
   selectedCells.value = []
 
   if (shifts.value[key]) {
-    // Если смена есть, по обычному клику удаляем её
     delete shifts.value[key]
     activePopup.value = null
   } else {
-    // Если пусто — открываем попап
     activePopup.value = { empId, day, key }
   }
 }
@@ -194,34 +187,47 @@ const getInitials = (name) => {
 
     <!-- ЛЕВЫЙ САЙДБАР -->
     <aside class="w-64 bg-white border-r border-gray-200 flex flex-col z-50 shrink-0">
-      <div class="p-6 font-bold text-xl flex items-center gap-2">
-        <div class="w-6 h-6 bg-[#1A1D21] rounded flex items-center justify-center text-white text-xs">C</div>
+      <div class="px-6 py-5 font-bold text-lg flex items-center gap-2.5">
+        <div class="w-7 h-7 bg-[#1A1D21] rounded-md flex items-center justify-center text-white text-sm">C</div>
         CRM
       </div>
-      <nav class="flex-1 px-4 space-y-2">
-        <a href="#" @click.prevent.stop="alert('Это тестовое задание, тут только график смен :)')" class="flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"><span>🏠</span> Главная</a>
-        <a href="#" class="flex items-center gap-3 px-4 py-2 bg-gray-100 text-gray-900 font-medium rounded-lg"><span>📅</span> Смены</a>
+      <nav class="flex-1 px-4 space-y-1">
+        <a href="#" @click.prevent.stop="alert('Это тестовое задание, тут только график смен :)')" class="flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+          <!-- SVG Иконка Дома -->
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+          Главная
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 bg-gray-100 text-gray-900 font-medium rounded-lg">
+          <!-- SVG Иконка Календаря -->
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          Смены
+        </a>
       </nav>
     </aside>
 
     <!-- ПРАВАЯ ЧАСТЬ -->
     <main class="flex-1 flex flex-col overflow-hidden relative z-10">
-      <header class="h-16 bg-white border-b border-gray-200 flex items-center px-8 shrink-0">
-        <div class="flex items-center gap-4">
-          <button class="text-gray-400 hover:text-gray-800">←</button>
+      <!-- Шапка -->
+      <header class="h-14 bg-white border-b border-gray-200 flex items-center px-6 shrink-0">
+        <div class="flex items-center gap-3">
+          <!-- SVG Иконка Стрелки назад -->
+          <button class="text-gray-400 hover:text-gray-800">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
           <span class="text-gray-500 text-sm">Графики смен</span>
         </div>
       </header>
 
-      <div class="flex-1 overflow-auto p-8 flex flex-col">
-        <div class="flex justify-between items-center mb-6 shrink-0">
+      <!-- Рабочая область -->
+      <div class="flex-1 overflow-auto p-6 flex flex-col">
+        <div class="flex justify-between items-center mb-5 shrink-0">
           <div class="flex items-center gap-4">
-            <h1 class="text-3xl font-semibold">График</h1>
-            <span v-if="viewMode === 'month'" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">{{ monthName }}</span>
+            <h1 class="text-2xl font-semibold">График</h1>
+            <span v-if="viewMode === 'month'" class="bg-gray-200 text-gray-700 px-3 py-0.5 rounded-full text-xs font-medium">{{ monthName }}</span>
           </div>
           <div class="flex gap-3">
-            <button @click.stop="publishSchedule" class="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">Опубликовать</button>
-            <button @click.stop="saveSchedule" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">Сохранить</button>
+            <button @click.stop="publishSchedule" class="px-4 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">Опубликовать</button>
+            <button @click.stop="saveSchedule" class="px-4 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">Сохранить</button>
           </div>
         </div>
 
@@ -229,15 +235,16 @@ const getInitials = (name) => {
 
           <!-- ТАБЛИЦА -->
           <div class="flex-1 flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+            <div class="p-3 border-b border-gray-100 flex items-center justify-between">
               <div class="relative w-64">
-                <span class="absolute left-3 top-2.5 text-gray-400">🔍</span>
-                <input v-model="searchQuery" @click.stop type="text" placeholder="Поиск по ФИО" class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100">
+                <!-- SVG Иконка Лупы -->
+                <svg class="w-4 h-4 absolute left-3 top-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input v-model="searchQuery" @click.stop type="text" placeholder="Поиск по ФИО" class="w-full pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100">
               </div>
 
               <div class="flex bg-gray-100 p-1 rounded-lg">
-                <button @click.stop="viewMode = 'month'; selectedCells = []" :class="{'bg-[#1A1D21] text-white shadow-sm': viewMode === 'month', 'text-gray-500 hover:text-gray-800': viewMode !== 'month'}" class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors">Месяц</button>
-                <button @click.stop="viewMode = 'week'; selectedCells = []" :class="{'bg-[#1A1D21] text-white shadow-sm': viewMode === 'week', 'text-gray-500 hover:text-gray-800': viewMode !== 'week'}" class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors">Неделя</button>
+                <button @click.stop="viewMode = 'month'; selectedCells = []" :class="{'bg-[#1A1D21] text-white shadow-sm': viewMode === 'month', 'text-gray-500 hover:text-gray-800': viewMode !== 'month'}" class="px-3 py-1 text-xs font-medium rounded-md transition-colors">Месяц</button>
+                <button @click.stop="viewMode = 'week'; selectedCells = []" :class="{'bg-[#1A1D21] text-white shadow-sm': viewMode === 'week', 'text-gray-500 hover:text-gray-800': viewMode !== 'week'}" class="px-3 py-1 text-xs font-medium rounded-md transition-colors">Неделя</button>
               </div>
             </div>
 
@@ -245,42 +252,43 @@ const getInitials = (name) => {
               <table class="w-full text-left border-collapse">
                 <thead class="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  <th class="py-3 px-4 font-medium text-gray-500 text-sm border-b border-gray-200 w-64 bg-gray-50 sticky left-0 z-20">Сотрудник</th>
-                  <th v-for="day in days" :key="day" class="py-3 px-2 font-medium text-gray-500 text-sm border-b border-gray-200 text-center min-w-[80px] bg-gray-50">
+                  <th class="py-2.5 px-4 font-medium text-gray-500 text-xs border-b border-gray-200 w-64 bg-gray-50 sticky left-0 z-20">Сотрудник</th>
+                  <th v-for="day in days" :key="day" class="py-2.5 px-2 font-medium text-gray-500 text-xs border-b border-gray-200 text-center min-w-[80px] bg-gray-50">
                     {{ day }}
                   </th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr v-for="emp in filteredEmployees" :key="emp.id" class="border-b border-gray-100">
-                  <td class="py-2 px-4 flex items-center gap-3 border-r border-gray-100 sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                    <div :class="`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${emp.color}`">
+                  <!-- Добавлены outline-none select-none -->
+                  <td class="py-1.5 px-4 flex items-center gap-3 border-r border-gray-100 sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] outline-none select-none">
+                    <div :class="`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${emp.color}`">
                       {{ getInitials(emp.name) }}
                     </div>
                     <div>
-                      <div class="text-sm font-medium text-gray-900">{{ emp.name }}</div>
-                      <div class="text-xs text-gray-500">{{ emp.role }}</div>
+                      <div class="text-[13px] font-medium text-gray-900">{{ emp.name }}</div>
+                      <div class="text-[11px] text-gray-500">{{ emp.role }}</div>
                     </div>
                   </td>
 
                   <td
                       v-for="day in days"
                       :key="day"
-                      class="p-1 border-r border-gray-100 relative group"
+                      class="p-0.5 border-r border-gray-100 relative group"
                       @click.stop="handleCellClick(emp.id, day, $event)"
                       @dragover.prevent
                       @drop="onDrop(emp.id, day)"
                   >
-                    <div v-if="isCellSelected(emp.id, day)" class="w-full h-12 rounded-lg border-2 border-blue-400 bg-blue-50 flex items-center justify-center transition-all cursor-pointer">
-                      <span class="text-blue-500 font-medium">✓</span>
+                    <div v-if="isCellSelected(emp.id, day)" class="w-full h-11 rounded-lg border-2 border-blue-400 bg-blue-50 flex items-center justify-center transition-all cursor-pointer">
+                      <span class="text-blue-500 font-medium text-sm">✓</span>
                     </div>
 
-                    <div v-else-if="getShift(emp.id, day)" :class="`w-full h-12 rounded-lg flex flex-col items-center justify-center text-[11px] leading-tight px-1 cursor-pointer ${getShift(emp.id, day).colorClass}`">
+                    <div v-else-if="getShift(emp.id, day)" :class="`w-full h-11 rounded-lg flex flex-col items-center justify-center text-[10px] leading-tight px-1 cursor-pointer ${getShift(emp.id, day).colorClass}`">
                       <span class="font-bold">{{ getShift(emp.id, day).name }}</span>
                       <span class="opacity-80">{{ getShift(emp.id, day).hours }}ч</span>
                     </div>
 
-                    <div v-else class="w-full h-12 rounded-lg border border-dashed border-transparent group-hover:border-gray-300 flex items-center justify-center transition-all bg-gray-50/50 hover:bg-gray-100 cursor-pointer">
+                    <div v-else class="w-full h-11 rounded-lg border border-dashed border-transparent group-hover:border-gray-300 flex items-center justify-center transition-all bg-gray-50/50 hover:bg-gray-100 cursor-pointer">
                     </div>
 
                     <div v-if="activePopup && activePopup.key === `${emp.id}-${day}`" @click.stop class="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-2">
@@ -294,9 +302,9 @@ const getInitials = (name) => {
                 </tr>
 
                 <tr class="bg-red-50/30">
-                  <td class="py-2 px-4 text-sm text-gray-500 font-medium border-r border-gray-100 sticky left-0 bg-[#FFF5F5] z-10">Покрытие</td>
-                  <td v-for="day in days" :key="day" class="p-1 border-r border-gray-100 text-center">
-                    <div :class="`w-full h-8 flex items-center justify-center text-sm rounded-md ${getCoverage(day) > 0 ? 'bg-blue-100 text-blue-700 font-bold' : 'text-gray-400 bg-red-50'}`">
+                  <td class="py-1.5 px-4 text-xs text-gray-500 font-medium border-r border-gray-100 sticky left-0 bg-[#FFF5F5] z-10">Покрытие</td>
+                  <td v-for="day in days" :key="day" class="p-0.5 border-r border-gray-100 text-center">
+                    <div :class="`w-full h-7 flex items-center justify-center text-xs rounded-md ${getCoverage(day) > 0 ? 'bg-blue-100 text-blue-700 font-bold' : 'text-gray-400 bg-red-50'}`">
                       {{ getCoverage(day) }}
                     </div>
                   </td>
